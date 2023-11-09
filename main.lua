@@ -4,7 +4,9 @@ Class = require('class')
 require('player')
 require('projectile')
 require('letter')
-
+require('customer')
+require('order')
+require('timer')
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 576
@@ -21,48 +23,45 @@ LETTER_WIDTH = 15
 LETTER_HEIGHT = 15
 
 local player = Player(10, 10)
+
 local projectiles = {}
 local letters = {}
-
 local alphabet = {}
-local timerSpawnRandLetter = 0
-local nextSpawnRandLetter = 3
 
 local coffeeOrders = {"ESPRESSO", "CAPPUCCINO", "LATTE", "AMERICANO", "MOCHA", "MACCHIATO", "RISTRETTO", "CORTADO", "AFFOGATO", "DECAF", "TURKISH", "IRISH", "FLATWHITE", "FRAPPE", "REDEYE", "BREVE", "PICCOLO", "CUBANO", "LUNGO", "MAZAGRAN"}
-local timerSpawnCoffeeLetter = 0
-local nextSpawnCoffeeLetter = 2
 
-local bufferSpaceLetterLine = 10
-local timerSpawnLetterLine = 0
-local nextSpawnLetterLine = 20
-
-local timerSpawnClearLetter = 0
-local nextSpawnClearLetter = 5
-
-local currentOrder = {}
-local currentOrderString = ""
-
-local bufferNextOrder = 0
-
+-- CONSTS
+local bufferSpaceLetterLine = 10 -- space between letters when spawning a letter line
 local clearSymbol = "!"
 
 math.randomseed(os.time())
 
 function selectRandomOrder()
-    currentOrder = {}
-    currentOrderString = coffeeOrders[math.random(1,20)]
-    for i = 1, #currentOrderString do
-        local char = currentOrderString:sub(i, i) -- Extract the character at position 'i'
-        table.insert(currentOrder, char)
-    end
-    orderLetter = 1
+    randOrder = coffeeOrders[math.random(1,#coffeeOrders)]
+    currentOrder = Order(randOrder)
+    randomCustomer = math.random(1,9)
+    customer = Customer(-10, -5, 'assets/customers/'..randomCustomer..'/skeleton.png', 'assets/customers/'..randomCustomer..'/skeleton_open.png', 'assets/customers/'..randomCustomer..'/skeleton_happy.png')
+end
+
+function initLetterTimers()
+    randLetterTimer = Timer(3)
+    letterLineTimer = Timer(20)
+    clearLetterTimer = Timer(5)
+    bufferNextOrderTimer = Timer(2)
 end
 
 function love.load()
+    background_music = love.audio.newSource("assets/music.mp3", "stream")
+
+    background_music:setVolume(0.1) 
+    background_music:setPitch(1.05)
+
     love.graphics.setDefaultFilter('nearest', 'nearest') -- no bluriness no interpolation on pixels when scaled
     love.window.setTitle("Word Blast")
+    
     smallFont = love.graphics.newFont('assets/font.ttf', 15)
-
+    background = love.graphics.newImage("assets/background_test.png")
+    
     push:setupScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {
         vsync = true,
         fullscreen = false,
@@ -75,6 +74,7 @@ function love.load()
     end
 
     selectRandomOrder()
+    initLetterTimers()
 end
 
 function love.resize(w,h)
@@ -84,35 +84,104 @@ end
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
-    elseif key == "space" then
-        local initX = player.x + (player.width/2) - (PROJECTILE_WIDTH/2)
-        local initY = player.y - 5
-        table.insert(projectiles, Projectile(initX, initY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT))
+    elseif key == "k" then
+        player.currentWord = currentOrder.orderString
+    elseif key == "1" then
+        player.state = "LR_move"
+    elseif key == "2" then
+        player.state = "static_aim"
+
+        player:setAimCoords()
+        local initX = player.startAimX
+        local initY = player.startAimY
+        aimMarker = Projectile(initX, initY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT)
+    end
+
+    
+    if key == "space" then
+        if player.state == "LR_move" then
+            initX = player.x + (player.width/2) - (PROJECTILE_WIDTH/2)
+            initY = player.y - 5
+
+            local p = Projectile(initX, initY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT, "LR_move", 90)
+            table.insert(projectiles, p)
+            love.audio.play(p.shoot_sound)
+        elseif player.state == "static_aim" then
+            initX = player:getAimX()
+            initY = player:getAimY()
+
+            local p = Projectile(initX, initY, PROJECTILE_WIDTH+5, PROJECTILE_HEIGHT+5, "static_aim", player.aimAngle)
+            table.insert(projectiles, p)
+            love.audio.play(p.shoot_sound)
+        end
+        
+        print("Creating new projectile", initX, initY)
     end
 end
 
+function displayWords()
+    -- simple display across all states
+    love.graphics.setFont(smallFont)
+    -- love.graphics.setColor(0, 255/255, 0, 255/255)
+    love.graphics.print(currentOrder.orderString, 35, 15)
+    love.graphics.print(player.currentWord, 35, 35) -- concat in lua is '..'
+    
+    -- print(currentOrder.orderTimer.endTime)
+    if currentOrder.orderTimer.elapsedTime > currentOrder.orderTimer.endTime and currentOrder.orderTimer.endTime ~= 0 then
+        love.graphics.setColor(255/255, 255/255, 0/255)
+    end
+    if currentOrder.orderTimer.elapsedTime ~= -1 then
+        love.graphics.print(string.format("%.2f", currentOrder.orderTimer.elapsedTime), VIRTUAL_WIDTH - 45, 15)
+    end
+    love.graphics.setColor(255/255, 255/255, 255/255)
+end
+
 function love.draw(dt)
-    push:start()    
+    push:start()   
+
+    love.graphics.draw(background, 0, 0, 0, 1, 1)
+
     displayWords()
-
     player:render()
+    if customer then customer:render() end
 
-    for _, projectile in pairs(projectiles) do -- iterate through each projectile
-        projectile:render() -- render the projectile
+    for key, projectile in pairs(projectiles) do -- iterate through each projectile
+        projectile:render() -- update the position
     end
 
-    for _, letter in pairs(letters) do -- iterate through each letter
-        letter:render() -- render the projectile
+    for key, letter in pairs(letters) do -- iterate through each letter
+        letter:render() -- update the position
     end
+
+    if player.state == "static_aim" then
+        aimMarker.x = player:getAimX()
+        aimMarker.y = player:getAimY()
+        aimMarker:render()
+
+        guideX = aimMarker.x
+        guideY = aimMarker.y
+
+        deltaX = 10 * (90-player.aimAngle)/90
+        deltaY = -(10 - math.abs(deltaX))
+        for i = 0, 300, 1 do
+            guideX = guideX + deltaX
+            guideY = guideY + deltaY
+
+            love.graphics.setColor(255, 255, 255, 20)
+            love.graphics.rectangle("line", guideX, guideY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT)
+        end
+    end
+
+    -- love.graphics.rectangle("fill", 0, 270, 600, 2) -- TESTING
 
     push:finish()
 end
 
 function spawnRandomLetter(dt)
-    timerSpawnRandLetter = timerSpawnRandLetter + dt
-    if timerSpawnRandLetter > nextSpawnRandLetter then
-        timerSpawnRandLetter = 0
-        nextSpawnRandLetter = math.random(1,3)
+    randLetterTimer:updateElapsedTime(dt)
+    if randLetterTimer.elapsedTime > randLetterTimer.endTime then
+        randLetterTimer:resetElapsedTime(dt)
+        randLetterTimer:newEndTime(math.random(1,3))
         
         local initX = math.random(0, VIRTUAL_WIDTH - LETTER_WIDTH)
         local initY = math.random(-50, 0)
@@ -122,57 +191,41 @@ function spawnRandomLetter(dt)
 end
 
 function spawnLetterToFulfillOrder(dt)
-    timerSpawnCoffeeLetter = timerSpawnCoffeeLetter + dt
-    if timerSpawnCoffeeLetter > nextSpawnCoffeeLetter then
-        timerSpawnCoffeeLetter = 0
-        nextSpawnCoffeeLetter = math.random(1,5)
-        
-        local initX = math.random(0, VIRTUAL_WIDTH - LETTER_WIDTH)
-        local initY = math.random(-50, 0)
+    -- print(currentOrder.orderLetterTimer.endTime)
+    currentOrder.orderLetterTimer:updateElapsedTime(dt)
+    if currentOrder.orderLetterTimer.endTime then
+        if currentOrder.orderLetterTimer.elapsedTime > currentOrder.orderLetterTimer.endTime then
+            currentOrder.orderLetterTimer:resetElapsedTime(dt)
+            local spawnFreq = currentOrder.orderCharsSpawnFreq[currentOrder.currentLetterIndex]
+            currentOrder.orderLetterTimer:newEndTime(spawnFreq)
 
-        if orderLetter <= #currentOrder then
-            local coffeeLetter = currentOrder[orderLetter]
-            table.insert(letters, Letter(coffeeLetter, initX, initY, LETTER_WIDTH, LETTER_HEIGHT))
+            -- print("letter "..currentOrder.orderChars[currentOrder.currentLetterIndex].." spawning after "..currentOrder.orderLetterTimer.endTime.."s")
+
+            if currentOrder.currentLetterIndex <= #currentOrder.orderChars then
+                local initX = math.random(0, VIRTUAL_WIDTH - LETTER_WIDTH)
+                local initY = 0 -- currentOrder.orderCharsInitY[currentOrder.currentLetterIndex]
+                
+                if currentOrder.willSpawnLetterLine and currentOrder.currentLetterIndex == currentOrder.letterLineSpawnIndex then
+                    spawnLetterLine()
+                    currentOrder.willSpawnLetterLine = false
+                elseif currentOrder.currentLetterIndex ~= currentOrder.letterLineSpawnIndex then
+                    local coffeeChar = currentOrder.orderChars[currentOrder.currentLetterIndex]
+                
+                    local letter = Letter(coffeeChar, initX, initY, LETTER_WIDTH, LETTER_HEIGHT)
+                    letter:setSpeed(currentOrder.orderCharsSpeed[currentOrder.currentLetterIndex])
+                    
+                    table.insert(letters, letter)
+                end
+            end
         end
     end
 end
 
-function spawnLetterLine(dt)
-    timerSpawnLetterLine = timerSpawnLetterLine + dt
-    if timerSpawnLetterLine > nextSpawnLetterLine then
-        timerSpawnLetterLine = 0
-        nextSpawnLetterLine = math.random(20, 100)
-
-        nextSpawnCoffeeLetter = math.random(10, 20)
-        nextSpawnRandLetter = math.random(10, 20)
-        nextSpawnClearLetter = math.random(10, 20)
-
-        local numLetters = (VIRTUAL_WIDTH / (LETTER_WIDTH + bufferSpaceLetterLine)) + 5
-        local randomIndex = math.random(1, numLetters)
-        local currentInitX = 0
-        for i = 1, numLetters do
-            local alphaValue = ''
-            
-            currentInitX = currentInitX + (bufferSpaceLetterLine / 2)
-            local initY = -50
-
-            if i ~= randomIndex then
-                alphaValue = alphabet[math.random(1, 26)]
-            else
-                alphaValue = currentOrder[orderLetter]
-            end
-
-            table.insert(letters, Letter(alphaValue, currentInitX, initY, LETTER_WIDTH, LETTER_HEIGHT, 35))
-            currentInitX = currentInitX + LETTER_WIDTH
-        end 
-    end
-end
-
 function spawnClearLetter(dt)
-    timerSpawnClearLetter = timerSpawnClearLetter + dt
-    if timerSpawnClearLetter > nextSpawnClearLetter then
-        timerSpawnClearLetter = 0
-        nextSpawnClearLetter = math.random(1,5)
+    clearLetterTimer:updateElapsedTime(dt)
+    if clearLetterTimer.elapsedTime > clearLetterTimer.endTime then
+        clearLetterTimer:resetElapsedTime(dt)
+        clearLetterTimer:newEndTime(math.random(1,5))
 
         local initX = math.random(0, VIRTUAL_WIDTH - LETTER_WIDTH)
         local initY = math.random(-50, 0)
@@ -181,7 +234,116 @@ function spawnClearLetter(dt)
     end
 end
 
-function love.update(dt)
+function isInTable(elem, table)
+    local i = 1
+    while i <= #table do
+        if table[i] == elem then
+            return true
+        end
+        i = i + 1
+    end
+    return false
+end
+
+function spawnLetterLine()
+    frozenCurrentLetterIndex = currentOrder.currentLetterIndex -- we only want to make comparisons with respect to what the current letter was at the time
+    randLetterTimer:newEndTime(10)
+    -- clearLetterTimer:newEndTime(10)
+
+    local numLetters = (VIRTUAL_WIDTH / (LETTER_WIDTH + bufferSpaceLetterLine)) + 5
+    
+    randomIndicies = {}
+    for i = 1,3 do
+        randomIndex = math.random(1, numLetters)
+        while isInTable(randomIndex, randomIndicies) do
+            randomIndex = math.random(1, numLetters)
+        end
+        table.insert(randomIndicies,randomIndex)
+        print(randomIndex)
+    end
+
+    local countGuranteedLetters = 1
+    local currentInitX = 0
+    for i = 1, numLetters do
+        local alphaValue = ''
+        
+        currentInitX = currentInitX + (bufferSpaceLetterLine / 2)
+        local initY = 0
+        print(i, randomIndicies[countGuranteedLetters])
+        
+        if not isInTable(i, randomIndicies) then
+            alphaValue = alphabet[math.random(1, 26)]
+        else
+            print(frozenCurrentLetterIndex)
+            print(countGuranteedLetters - 1)
+            if (frozenCurrentLetterIndex + (countGuranteedLetters - 1)) <= #currentOrder.orderString then
+                alphaValue = currentOrder.orderChars[frozenCurrentLetterIndex + (countGuranteedLetters - 1)]
+                print('adding next letter '..alphaValue..' to letter line')
+            else
+                alphaValue = currentOrder.orderChars[#currentOrder.orderString]
+                print('adding def letter '..alphaValue..' to letter line')
+            end
+            
+            countGuranteedLetters = countGuranteedLetters + 1
+        end
+
+        local letter = Letter(alphaValue, currentInitX, initY, LETTER_WIDTH, LETTER_HEIGHT)
+        letter:setSpeed(35)
+        table.insert(letters, letter)
+
+        currentInitX = currentInitX + LETTER_WIDTH
+    end 
+end
+
+-- function spawnLetterLine(dt)
+--     letterLineTimer:updateElapsedTime(dt)
+--     if letterLineTimer.elapsedTime > letterLineTimer.endTime then
+--         letterLineTimer:resetElapsedTime(dt)
+--         letterLineTimer:newEndTime(math.random(20,100))
+
+--         currentOrder.orderLetterTimer:newEndTime(math.random(10,20))
+
+--         randLetterTimer:newEndTime(math.random(10,20))
+--         clearLetterTimer:newEndTime(math.random(10,20))
+
+--         local numLetters = (VIRTUAL_WIDTH / (LETTER_WIDTH + bufferSpaceLetterLine)) + 5
+--         local randomIndex = math.random(1, numLetters)
+--         local currentInitX = 0
+--         for i = 1, numLetters do
+--             local alphaValue = ''
+            
+--             currentInitX = currentInitX + (bufferSpaceLetterLine / 2)
+--             local initY = -50
+
+--             if i ~= randomIndex then
+--                 alphaValue = alphabet[math.random(1, 26)]
+--             else
+--                 alphaValue = currentOrder.orderChars[currentOrder.currentLetterIndex]
+--             end
+
+--             local letter = Letter(alphaValue, currentInitX, initY, LETTER_WIDTH, LETTER_HEIGHT)
+--             letter:setSpeed(35)
+--             table.insert(letters, letter)
+
+--             currentInitX = currentInitX + LETTER_WIDTH
+--         end 
+--     end
+-- end
+
+function handleSpriteAnimations(dt)
+    customer.talkTimer = customer.talkTimer + dt
+    if customer.talkTimer < 1 then
+        if customer.talkTimer > customer.timeSwitchAnimation then 
+            if customer.spriteStatus == "resting" then customer:setSpriteStatus("open") 
+            else customer:setSpriteStatus("resting") end
+            customer.timeSwitchAnimation = customer.timeSwitchAnimation + 0.15
+        end
+    else
+        sprite = "resting"
+    end
+end
+
+function handlePlayerMove() 
     if love.keyboard.isDown('d') or love.keyboard.isDown('right') then
         player.dx = PLAYER_SPEED
     elseif love.keyboard.isDown('a') or love.keyboard.isDown('left')  then
@@ -189,50 +351,113 @@ function love.update(dt)
     else
         player.dx = 0
     end
+end
+
+function handlePlayerAim()
+    player.dx = 0
+
+    if love.keyboard.isDown('a') or love.keyboard.isDown('left') then
+        player.aimAngle = math.min(player.aimAngle + 1, 180)
+    elseif love.keyboard.isDown('d') or love.keyboard.isDown('right')  then
+        player.aimAngle = math.max(player.aimAngle - 1, 0)
+    end
+    
+end
+
+function collision(proj, let)
+    projectileLeftEdge = proj.x
+    projectileRightEdge = proj.x + proj.width
+    projectileBtmEdge = proj.y + proj.height
+    projectileTopEdge = proj.y
+
+    letterLeftEdge = let.x
+    letterRightEdge = let.x + let.width
+    letterTopEdge = let.y
+    letterBtmEdge = let.y + let.height
+
+    case1 = projectileRightEdge > letterLeftEdge and projectileRightEdge < letterRightEdge and projectileBtmEdge > letterTopEdge and projectileTopEdge < letterBtmEdge
+    case2 = projectileLeftEdge < letterRightEdge and projectileLeftEdge > letterLeftEdge and projectileBtmEdge > letterTopEdge and projectileTopEdge < letterBtmEdge
+
+    return case1 or case2
+end
+
+function love.update(dt)
+    if not background_music:isPlaying( ) then
+		love.audio.play(background_music)
+	end
+
+    if player.state == "LR_move" then
+        handlePlayerMove()
+    elseif player.state == "static_aim" then
+        handlePlayerAim()
+        -- print(player.aimAngle)
+    end
 
     spawnRandomLetter(dt)
     spawnLetterToFulfillOrder(dt)
-    spawnLetterLine(dt)
     spawnClearLetter(dt)
+
+    handleSpriteAnimations(dt)
+
+    if currentOrder.trackingOrderTimer then
+        currentOrder.orderTimer:updateElapsedTime(dt)
+    end
 
     -- Handle collisions
     for keyp, projectile in pairs(projectiles) do 
         for keyl, letter in pairs(letters) do 
-            if projectile.x + projectile.width > letter.x and projectile.x < (letter.x + letter.width) and projectile.y < (letter.y + letter.height) then
-                
+            if collision(projectile, letter) then
+                love.audio.play(letter.collect_sound)
                 -- if the player grabbed the necessary order letter
-                if currentOrder[orderLetter] == letter.value then
-                    orderLetter = orderLetter + 1 -- move to next letter
+                
+                if currentOrder.orderChars[currentOrder.currentLetterIndex] == letter.value and (player.currentWord .. letter.value):sub(1, currentOrder.currentLetterIndex+1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex) then
+                    currentOrder.currentLetterIndex = currentOrder.currentLetterIndex + 1 -- move to next letter
+                    
+                    currentOrder.orderLetterTimer:resetElapsedTime(dt)
+                    local spawnFreq = currentOrder.orderCharsSpawnFreq[currentOrder.currentLetterIndex]
+                    currentOrder.orderLetterTimer:newEndTime(spawnFreq)
                 end
 
-                print("current order letter is", currentOrder[orderLetter])
-                if letter.value == clearSymbol then
-                    letter_to_clear = player.currentWord:sub(#player.currentWord, #player.currentWord) -- will be empty when currentWord is empty
-                    if orderLetter-1 > 0 then
-                        if currentOrder[orderLetter-1] == letter_to_clear then -- currentOrder[orderLetter-1] returns nil when it does not exist
-                            orderLetter = orderLetter - 1
-                        end
+                if letter.value == clearSymbol then -- if the player grabbed "!"
+                    letter_to_clear = player.currentWord:sub(#player.currentWord, #player.currentWord) -- select the current last letter (will be empty if currentWord is empty)
+                    -- if currentOrder.currentLetterIndex-1 > 0 then -- error checking
+                    print(currentOrder.orderChars[currentOrder.currentLetterIndex])
+                    if currentOrder.orderChars[currentOrder.currentLetterIndex] == letter_to_clear then -- and (player.currentWord):sub(1, currentOrder.currentLetterIndex-1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1) then -- if the letter that will be cleared is a valid part of the order
+                        print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
+                        currentOrder.currentLetterIndex = currentOrder.currentLetterIndex - 1 -- revert the current currentOrder.currentLetterIndex to the previous one
                     end
-                    player.currentWord = player.currentWord:sub(1, #player.currentWord-1)
-                    print("current order letter is", currentOrder[orderLetter])
+                        -- print("final letter", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
+                    -- end
+                    player.currentWord = player.currentWord:sub(1, #player.currentWord-1) -- clear the last letter
                 else
-                    player.currentWord = player.currentWord .. letter.value
+                    player.currentWord = player.currentWord .. letter.value -- the player didn't grab a "!" then add the letter they grabbed to the current word
                 end
-                table.remove(projectiles, keyp)
-                table.remove(letters, keyl)
+                table.remove(projectiles, keyp) -- remove projectile that collided
+                table.remove(letters, keyl) -- remove letter that was hit
             end
         end
-        ::continue::
     end
 
-    if player.currentWord == currentOrderString or currentOrderString == " :D" then
-        currentOrderString = " :D"
-        player.currentWord = ""
+    -- Handle order completion and next order
+    if player.currentWord == currentOrder.orderString or customer.spriteStatus == "happy" then
+        currentOrder.trackingOrderTimer = false
+        bufferNextOrderTimer:updateElapsedTime(dt)
+        
+        if bufferNextOrderTimer.elapsedTime > bufferNextOrderTimer.endTime then
+            customer:setSpriteStatus("none")
 
-        bufferNextOrder = bufferNextOrder + dt
-        if bufferNextOrder > 3 then
-            bufferNextOrder = 0
-            selectRandomOrder()
+            currentOrder.orderString = ""
+            currentOrder.orderTimer.elapsedTime = -1
+            currentOrder.firstTimeFirstLetter = false
+
+            player.currentWord = ""
+
+            if bufferNextOrderTimer.elapsedTime > 3 then
+                bufferNextOrderTimer:resetElapsedTime()
+                selectRandomOrder()
+            end
+        else
+            customer:setSpriteStatus("happy")
         end
     end
 
@@ -249,18 +474,29 @@ function love.update(dt)
     for key, letter in pairs(letters) do
         letter:update(dt) -- update position
 
+        -- handle timer
+        isNecessaryLetter = currentOrder.orderChars[currentOrder.currentLetterIndex] == letter.value
+        if isNecessaryLetter and currentOrder.firstTimeFirstLetter and letter.y > 0 then -- if the letter is the first necessary character and its the first time the player is seeing it
+            currentOrder.firstTimeFirstLetter = false
+            currentOrder.trackingOrderTimer = true
+
+            print(currentOrder.speedThreshold)
+        end
+
+        -- mock projectile (testing)
+        -- if letter.y > 270 - LETTER_HEIGHT and letter.y < 271 - LETTER_HEIGHT and isNecessaryLetter then
+        --     currentOrder.currentLetterIndex = currentOrder.currentLetterIndex + 1
+        --     print("letter "..letter.value.." got to bottom at "..tostring(currentOrder.orderTimer.elapsedTime))
+
+        --     currentOrder.orderLetterTimer:resetElapsedTime(dt)
+        --     local spawnFreq = currentOrder.orderCharsSpawnFreq[currentOrder.currentLetterIndex]
+        --     currentOrder.orderLetterTimer:newEndTime(spawnFreq)
+        -- end
+
         if letter.y > VIRTUAL_HEIGHT then
             table.remove(letters, key) -- remove if it went off screen
         end
     end
 
     player:update(dt)
-end
-
-function displayWords()
-    -- simple display across all states
-    love.graphics.setFont(smallFont)
-    love.graphics.setColor(0, 255/255, 0, 255/255)
-    love.graphics.print(currentOrderString, 0, 5)
-    love.graphics.print(player.currentWord, 0, 50) -- concat in lua is '..'
 end

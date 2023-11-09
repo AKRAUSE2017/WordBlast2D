@@ -3,7 +3,10 @@ Letter = Class{}
 MIN_LETTER_SPEED = 50
 MAX_LETTER_SPEED = 100
 
-function Letter:init(value, x, y, w, h, defined_speed)
+function Letter:init(value, x, y, w, h)
+    self.collect_sound = love.audio.newSource("assets/collect_item.mp3", "static")
+    self.collect_sound:setVolume(0.1)
+
     self.width = w
     self.height = h
 
@@ -14,13 +17,7 @@ function Letter:init(value, x, y, w, h, defined_speed)
 
     self.dy = 0
 
-    if defined_speed then
-        self.min_speed = defined_speed
-        self.max_speed = defined_speed
-    else
-        self.min_speed = MIN_LETTER_SPEED
-        self.max_speed = MAX_LETTER_SPEED
-    end
+    self.speed = math.random(MIN_LETTER_SPEED, MAX_LETTER_SPEED)
 end
 
 function Letter:render()
@@ -29,6 +26,10 @@ function Letter:render()
 end
 
 function Letter:update(dt)
-    self.dy = math.random(self.min_speed, self.max_speed)
+    self.dy = self.speed
     self.y = self.y + self.dy * dt
+end
+
+function Letter:setSpeed(speed)
+    self.speed = speed
 end
