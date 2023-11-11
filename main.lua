@@ -7,6 +7,7 @@ require('letter')
 require('customer')
 require('order')
 require('timer')
+require('aimline')
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 576
@@ -21,12 +22,14 @@ PROJECTILE_HEIGHT = 3
 
 LETTER_WIDTH = 15
 LETTER_HEIGHT = 15
+INIT_Y = -30
 
 local player = Player(10, 10)
 
 local projectiles = {}
 local letters = {}
 local alphabet = {}
+local aimLines = {}
 
 local coffeeOrders = {"ESPRESSO", "CAPPUCCINO", "LATTE", "AMERICANO", "MOCHA", "MACCHIATO", "RISTRETTO", "CORTADO", "AFFOGATO", "DECAF", "TURKISH", "IRISH", "FLATWHITE", "FRAPPE", "REDEYE", "BREVE", "PICCOLO", "CUBANO", "LUNGO", "MAZAGRAN"}
 
@@ -115,7 +118,7 @@ function love.keypressed(key)
             love.audio.play(p.shoot_sound)
         end
         
-        print("Creating new projectile", initX, initY)
+        -- print("Creating new projectile", initX, initY)
     end
 end
 
@@ -136,7 +139,7 @@ function displayWords()
     love.graphics.setColor(255/255, 255/255, 255/255)
 end
 
-function love.draw(dt)
+function love.draw()
     push:start()   
 
     love.graphics.draw(background, 0, 0, 0, 1, 1)
@@ -154,25 +157,15 @@ function love.draw(dt)
     end
 
     if player.state == "static_aim" then
-        aimMarker.x = player:getAimX()
-        aimMarker.y = player:getAimY()
         aimMarker:render()
-
-        guideX = aimMarker.x
-        guideY = aimMarker.y
-
-        deltaX = 10 * (90-player.aimAngle)/90
-        deltaY = -(10 - math.abs(deltaX))
-        for i = 0, 300, 1 do
-            guideX = guideX + deltaX
-            guideY = guideY + deltaY
-
-            love.graphics.setColor(255, 255, 255, 20)
-            love.graphics.rectangle("line", guideX, guideY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT)
+        if #aimLines == 150 then
+            for i = 1, 150, 1 do
+                aimLines[i]:render()
+            end
         end
     end
 
-    -- love.graphics.rectangle("fill", 0, 270, 600, 2) -- TESTING
+    love.graphics.rectangle("fill", 0, VIRTUAL_HEIGHT - 20, 600, 2) -- TESTING
 
     push:finish()
 end
@@ -203,7 +196,7 @@ function spawnLetterToFulfillOrder(dt)
 
             if currentOrder.currentLetterIndex <= #currentOrder.orderChars then
                 local initX = math.random(0, VIRTUAL_WIDTH - LETTER_WIDTH)
-                local initY = 0 -- currentOrder.orderCharsInitY[currentOrder.currentLetterIndex]
+                local initY = INIT_Y -- currentOrder.orderCharsInitY[currentOrder.currentLetterIndex]
                 
                 if currentOrder.willSpawnLetterLine and currentOrder.currentLetterIndex == currentOrder.letterLineSpawnIndex then
                     spawnLetterLine()
@@ -259,7 +252,7 @@ function spawnLetterLine()
             randomIndex = math.random(1, numLetters)
         end
         table.insert(randomIndicies,randomIndex)
-        print(randomIndex)
+        -- print(randomIndex)
     end
 
     local countGuranteedLetters = 1
@@ -268,20 +261,15 @@ function spawnLetterLine()
         local alphaValue = ''
         
         currentInitX = currentInitX + (bufferSpaceLetterLine / 2)
-        local initY = 0
-        print(i, randomIndicies[countGuranteedLetters])
+        local initY = INIT_Y
         
         if not isInTable(i, randomIndicies) then
             alphaValue = alphabet[math.random(1, 26)]
         else
-            print(frozenCurrentLetterIndex)
-            print(countGuranteedLetters - 1)
             if (frozenCurrentLetterIndex + (countGuranteedLetters - 1)) <= #currentOrder.orderString then
                 alphaValue = currentOrder.orderChars[frozenCurrentLetterIndex + (countGuranteedLetters - 1)]
-                print('adding next letter '..alphaValue..' to letter line')
             else
                 alphaValue = currentOrder.orderChars[#currentOrder.orderString]
-                print('adding def letter '..alphaValue..' to letter line')
             end
             
             countGuranteedLetters = countGuranteedLetters + 1
@@ -294,41 +282,6 @@ function spawnLetterLine()
         currentInitX = currentInitX + LETTER_WIDTH
     end 
 end
-
--- function spawnLetterLine(dt)
---     letterLineTimer:updateElapsedTime(dt)
---     if letterLineTimer.elapsedTime > letterLineTimer.endTime then
---         letterLineTimer:resetElapsedTime(dt)
---         letterLineTimer:newEndTime(math.random(20,100))
-
---         currentOrder.orderLetterTimer:newEndTime(math.random(10,20))
-
---         randLetterTimer:newEndTime(math.random(10,20))
---         clearLetterTimer:newEndTime(math.random(10,20))
-
---         local numLetters = (VIRTUAL_WIDTH / (LETTER_WIDTH + bufferSpaceLetterLine)) + 5
---         local randomIndex = math.random(1, numLetters)
---         local currentInitX = 0
---         for i = 1, numLetters do
---             local alphaValue = ''
-            
---             currentInitX = currentInitX + (bufferSpaceLetterLine / 2)
---             local initY = -50
-
---             if i ~= randomIndex then
---                 alphaValue = alphabet[math.random(1, 26)]
---             else
---                 alphaValue = currentOrder.orderChars[currentOrder.currentLetterIndex]
---             end
-
---             local letter = Letter(alphaValue, currentInitX, initY, LETTER_WIDTH, LETTER_HEIGHT)
---             letter:setSpeed(35)
---             table.insert(letters, letter)
-
---             currentInitX = currentInitX + LETTER_WIDTH
---         end 
---     end
--- end
 
 function handleSpriteAnimations(dt)
     customer.talkTimer = customer.talkTimer + dt
@@ -353,14 +306,16 @@ function handlePlayerMove()
     end
 end
 
-function handlePlayerAim()
+function handlePlayerAim(dt)
     player.dx = 0
 
     if love.keyboard.isDown('a') or love.keyboard.isDown('left') then
-        player.aimAngle = math.min(player.aimAngle + 1, 180)
+        player.aimAngle = math.min(player.aimAngle + 100 * dt, 180)
     elseif love.keyboard.isDown('d') or love.keyboard.isDown('right')  then
-        player.aimAngle = math.max(player.aimAngle - 1, 0)
+        player.aimAngle = math.max(player.aimAngle - 100 * dt, 0)
     end
+
+    -- print(player.aimAngle)
     
 end
 
@@ -382,15 +337,39 @@ function collision(proj, let)
 end
 
 function love.update(dt)
-    if not background_music:isPlaying( ) then
-		love.audio.play(background_music)
-	end
+    -- if not background_music:isPlaying( ) then
+	-- 	love.audio.play(background_music)
+	-- end
 
     if player.state == "LR_move" then
         handlePlayerMove()
     elseif player.state == "static_aim" then
-        handlePlayerAim()
-        -- print(player.aimAngle)
+        handlePlayerAim(dt)
+        
+        aimMarker.x = player:getAimX()
+        aimMarker.y = player:getAimY()
+        
+        guideX = aimMarker.x
+        guideY = aimMarker.y
+
+        deltaX = 10 * (90-player.aimAngle)/90
+        deltaY = -(10 - math.abs(deltaX))
+
+        if #aimLines == 0 then
+            for i = 1, 150, 1 do
+                guideX = guideX + deltaX
+                guideY = guideY + deltaY
+                
+                table.insert(aimLines, AimLine(guideX, guideY, PROJECTILE_WIDTH, PROJECTILE_HEIGHT))
+            end
+        else
+            for i = 1, 150, 1 do
+                guideX = guideX + deltaX
+                guideY = guideY + deltaY
+                
+                aimLines[i]:update(guideX, guideY)
+            end
+        end
     end
 
     spawnRandomLetter(dt)
@@ -419,16 +398,16 @@ function love.update(dt)
                 end
 
                 if letter.value == clearSymbol then -- if the player grabbed "!"
-                    letter_to_clear = player.currentWord:sub(#player.currentWord, #player.currentWord) -- select the current last letter (will be empty if currentWord is empty)
-                    -- if currentOrder.currentLetterIndex-1 > 0 then -- error checking
-                    print(currentOrder.orderChars[currentOrder.currentLetterIndex])
-                    if currentOrder.orderChars[currentOrder.currentLetterIndex] == letter_to_clear then -- and (player.currentWord):sub(1, currentOrder.currentLetterIndex-1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1) then -- if the letter that will be cleared is a valid part of the order
-                        print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
-                        currentOrder.currentLetterIndex = currentOrder.currentLetterIndex - 1 -- revert the current currentOrder.currentLetterIndex to the previous one
+                    -- print("player word", player.currentWord:sub(1, currentOrder.currentLetterIndex))
+                    -- print("target word", currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1))
+                    if #player.currentWord > 0 then
+                        if player.currentWord:sub(1, currentOrder.currentLetterIndex) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1) then -- if the letter that will be cleared is a valid part of the order
+                            print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
+                            currentOrder.currentLetterIndex = currentOrder.currentLetterIndex - 1 -- revert the current currentOrder.currentLetterIndex to the previous one
+                        end
+
+                        player.currentWord = player.currentWord:sub(1, #player.currentWord-1) -- clear the last letter
                     end
-                        -- print("final letter", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
-                    -- end
-                    player.currentWord = player.currentWord:sub(1, #player.currentWord-1) -- clear the last letter
                 else
                     player.currentWord = player.currentWord .. letter.value -- the player didn't grab a "!" then add the letter they grabbed to the current word
                 end
@@ -475,7 +454,10 @@ function love.update(dt)
         letter:update(dt) -- update position
 
         -- handle timer
+        --print(currentOrder.orderChars[currentOrder.currentLetterIndex])
         isNecessaryLetter = currentOrder.orderChars[currentOrder.currentLetterIndex] == letter.value
+        
+        --print(currentOrder.orderChars[currentOrder.currentLetterIndex])
         if isNecessaryLetter and currentOrder.firstTimeFirstLetter and letter.y > 0 then -- if the letter is the first necessary character and its the first time the player is seeing it
             currentOrder.firstTimeFirstLetter = false
             currentOrder.trackingOrderTimer = true
@@ -484,7 +466,7 @@ function love.update(dt)
         end
 
         -- mock projectile (testing)
-        -- if letter.y > 270 - LETTER_HEIGHT and letter.y < 271 - LETTER_HEIGHT and isNecessaryLetter then
+        -- if letter.y > (VIRTUAL_HEIGHT - 20 - LETTER_HEIGHT) and letter.y < (VIRTUAL_HEIGHT - 40 - LETTER_HEIGHT) and isNecessaryLetter then
         --     currentOrder.currentLetterIndex = currentOrder.currentLetterIndex + 1
         --     print("letter "..letter.value.." got to bottom at "..tostring(currentOrder.orderTimer.elapsedTime))
 

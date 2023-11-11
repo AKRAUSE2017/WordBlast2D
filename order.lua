@@ -9,9 +9,9 @@ MAX_SPAWN_TIME = 3
 MIN_LETTER_SPEED = 50
 MAX_LETTER_SPEED = 100
 
-ORDER_TIMER_BOUNDARY = 270
-
 function Order:init(order, dt)
+    ORDER_TIMER_BOUNDARY = VIRTUAL_HEIGHT - 20
+
     self.orderChars = {}
     self.orderString = order
 
@@ -24,7 +24,7 @@ function Order:init(order, dt)
 
     self.letterLineSpawnIndex = -1
 
-    randomNum = math.random(0,1)
+    randomNum = 1--math.random(0,1)
     if randomNum == 1 then
         self.willSpawnLetterLine = true
         self.letterLineSpawnIndex = math.random(2,#order-1)
@@ -46,7 +46,7 @@ function Order:init(order, dt)
         end
         table.insert(self.orderCharsSpeed, speed)
 
-        local distance = ORDER_TIMER_BOUNDARY - LETTER_HEIGHT
+        local distance = ORDER_TIMER_BOUNDARY + math.abs(INIT_Y) - LETTER_HEIGHT
         local estimatedTimeToBottom = distance / speed
 
         if i == 1 then
