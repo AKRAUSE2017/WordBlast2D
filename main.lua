@@ -8,6 +8,7 @@ require('customer')
 require('order')
 require('timer')
 require('aimline')
+require('fish')
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 576
@@ -54,9 +55,9 @@ function initLetterTimers()
 end
 
 function love.load()
-    background_music = love.audio.newSource("assets/music.mp3", "stream")
+    background_music = love.audio.newSource("assets/WordBlast2D_V1.mp3", "stream")
 
-    background_music:setVolume(0.1) 
+    background_music:setVolume(0.15) 
     background_music:setPitch(1.05)
 
     love.graphics.setDefaultFilter('nearest', 'nearest') -- no bluriness no interpolation on pixels when scaled
@@ -64,7 +65,16 @@ function love.load()
     
     smallFont = love.graphics.newFont('assets/font.ttf', 15)
     background = love.graphics.newImage("assets/background_test.png")
+    rain = love.graphics.newImage("assets/rain.png")
+    rainY = -55
+    cover_light = love.graphics.newImage("assets/light.png")
+    cover_plant = love.graphics.newImage("assets/plant.png")
+    cover_leaf = love.graphics.newImage("assets/plant_leaf.png")
+    cover_bar = love.graphics.newImage("assets/bar.png")
     
+    fish_blue = Fish(VIRTUAL_WIDTH-50, 105, "assets/fish_blue.png", 7)
+    fish_red = Fish(VIRTUAL_WIDTH-60, 109, "assets/fish_red.png", -7)
+
     push:setupScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {
         vsync = true,
         fullscreen = false,
@@ -143,9 +153,18 @@ function love.draw()
     push:start()   
 
     love.graphics.draw(background, 0, 0, 0, 1, 1)
+    love.graphics.draw(rain, 0, rainY)
+    love.graphics.draw(cover_light, 0, 0)
+    love.graphics.draw(cover_plant, 0, VIRTUAL_HEIGHT-114)
+    love.graphics.draw(cover_leaf, 7, VIRTUAL_HEIGHT-114-9)
+    love.graphics.draw(cover_bar, 0, VIRTUAL_HEIGHT-164)
 
     displayWords()
     player:render()
+
+    fish_blue:render()
+    fish_red:render()
+
     if customer then customer:render() end
 
     for key, projectile in pairs(projectiles) do -- iterate through each projectile
@@ -165,7 +184,7 @@ function love.draw()
         end
     end
 
-    love.graphics.rectangle("fill", 0, VIRTUAL_HEIGHT - 20, 600, 2) -- TESTING
+    -- love.graphics.rectangle("fill", 0, VIRTUAL_HEIGHT - 20, 600, 2) -- TESTING
 
     push:finish()
 end
@@ -336,10 +355,24 @@ function collision(proj, let)
     return case1 or case2
 end
 
+function round(number, digit_position) 
+    local precision = math.pow(10, digit_position)
+    number = number + (precision / 2); -- this causes value #.5 and up to round up
+                                       -- and #.4 and lower to round down.
+    return math.floor(number / precision) * precision
+end
+
 function love.update(dt)
-    -- if not background_music:isPlaying( ) then
-	-- 	love.audio.play(background_music)
-	-- end
+    if not background_music:isPlaying() then
+		love.audio.play(background_music)
+	end
+
+    rainY = (rainY + 175 * dt)
+    if rainY > 61 then
+        rainY = -55
+    end
+    fish_blue:update(dt)
+    fish_red:update(dt)
 
     if player.state == "LR_move" then
         handlePlayerMove()
