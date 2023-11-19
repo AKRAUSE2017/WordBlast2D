@@ -15,6 +15,8 @@ function Order:init(order, dt)
     self.orderChars = {}
     self.orderString = order
 
+    self.trackFulfillment = ""
+
     self.orderCharsSpawnFreq = {}
     -- self.orderCharsInitY = {}
     self.orderCharsSpeed = {}
@@ -46,7 +48,7 @@ function Order:init(order, dt)
         end
         table.insert(self.orderCharsSpeed, speed)
 
-        local distance = ORDER_TIMER_BOUNDARY + math.abs(INIT_Y) - LETTER_HEIGHT
+        local distance = ORDER_TIMER_BOUNDARY + math.abs(LETTER_INIT_Y) - LETTER_HEIGHT
         local estimatedTimeToBottom = distance / speed
 
         if i == 1 then
@@ -68,4 +70,19 @@ function Order:init(order, dt)
     self.orderTimer = Timer(self.speedThreshold)
 end
 
+function Order:checkAndUpdateSpeedTimer(dt)
+    if self.trackingOrderTimer then
+        self.orderTimer:updateElapsedTime(dt)
+    end
+end
 
+function Order:checkAndStartSpeedTimer(letter)
+    isNecessaryLetter = self.orderChars[self.currentLetterIndex] == letter.value
+    
+    if isNecessaryLetter and self.firstTimeFirstLetter and letter.y > 0 then -- if the letter is the first necessary character and its the first time the player is seeing it
+        self.firstTimeFirstLetter = false
+        self.trackingOrderTimer = true
+
+        print(self.speedThreshold)
+    end
+end

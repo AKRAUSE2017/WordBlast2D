@@ -3,7 +3,7 @@ Projectile = Class{}
 PROJECTILE_SPEED = 100
 
 function Projectile:init(x, y, w, h, mode, angle)
-    self.shoot_sound = love.audio.newSource("assets/Laser_Shoot15.wav", "static")
+    self.shoot_sound = love.audio.newSource("assets/sounds/shoot.wav", "static")
     self.shoot_sound:setVolume(0.1)
     
     self.width = w

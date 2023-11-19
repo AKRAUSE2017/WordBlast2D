@@ -29,3 +29,16 @@ function Customer:render()
         love.graphics.draw(self.sprites["resting"], self.x, self.y)
     end
 end
+
+function Customer:update(dt)
+    self.talkTimer = self.talkTimer + dt
+    if self.talkTimer < 1 then
+        if self.talkTimer > self.timeSwitchAnimation then 
+            if self.spriteStatus == "resting" then customer:setSpriteStatus("open") 
+            else customer:setSpriteStatus("resting") end
+            self.timeSwitchAnimation = self.timeSwitchAnimation + 0.15
+        end
+    else
+        self.spriteStatus = "resting"
+    end
+end

@@ -1,6 +1,6 @@
 Fish = Class{}
 
-function Fish:init(x, y, image, start_speed)
+function Fish:init(x, y, image, start_speed, flip)
     self.x = x
     self.y = y
 
@@ -11,11 +11,7 @@ function Fish:init(x, y, image, start_speed)
 
     self.speed = start_speed
 
-    if start_speed < 0 then
-        self.flip = -1
-    else
-        self.flip = 1
-    end
+    self.flip = flip
 end
 
 function Fish:render()

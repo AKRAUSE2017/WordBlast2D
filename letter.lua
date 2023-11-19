@@ -4,7 +4,7 @@ MIN_LETTER_SPEED = 50
 MAX_LETTER_SPEED = 100
 
 function Letter:init(value, x, y, w, h)
-    self.collect_sound = love.audio.newSource("assets/collect_item.mp3", "stream")
+    self.collect_sound = love.audio.newSource("assets/sounds/collect_item.mp3", "stream")
     self.collect_sound:setVolume(0.1)
 
     self.width = w
