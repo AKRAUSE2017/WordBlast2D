@@ -1,5 +1,6 @@
 require('timer')
 require('letter')
+require('floatletter')
 
 Order = Class{}
 
@@ -33,9 +34,21 @@ function Order:init(order, dt)
         print("WILL SPAWN LETTER LINE AT "..self.orderString:sub(self.letterLineSpawnIndex, self.letterLineSpawnIndex))
     end
 
+    local direction = 1
+    local floatX = 35
+    local floatY = 12
     for i = 1, #self.orderString do
+        floatY = floatY + direction
+
+        if floatY == 16 or floatY == 12 then
+            direction = direction * -1
+        end
+
         local char = self.orderString:sub(i, i) -- Extract the character at position 'i'
-        table.insert(self.orderChars, char)
+        local floatLetter = FloatLetter(floatX, floatY, char, direction)
+        table.insert(self.orderChars, floatLetter)
+        floatX = floatX + 10
+        print(floatY)
 
         local spawnFreq = math.random(MIN_SPAWN_TIME, MAX_SPAWN_TIME)
         table.insert(self.orderCharsSpawnFreq, spawnFreq)
@@ -76,13 +89,15 @@ function Order:checkAndUpdateSpeedTimer(dt)
     end
 end
 
-function Order:checkAndStartSpeedTimer(letter)
-    isNecessaryLetter = self.orderChars[self.currentLetterIndex] == letter.value
-    
-    if isNecessaryLetter and self.firstTimeFirstLetter and letter.y > 0 then -- if the letter is the first necessary character and its the first time the player is seeing it
-        self.firstTimeFirstLetter = false
-        self.trackingOrderTimer = true
+function Order:checkAndStartSpeedTimer(customer, letter)
+    if customer.spriteStatus == "resting" or customer.spriteStatus == "open" then
+        isNecessaryLetter = self.orderChars[self.currentLetterIndex].value == letter.value
+        
+        if isNecessaryLetter and self.firstTimeFirstLetter and letter.y > 0 then -- if the letter is the first necessary character and its the first time the player is seeing it
+            self.firstTimeFirstLetter = false
+            self.trackingOrderTimer = true
 
-        print(self.speedThreshold)
+            print(self.speedThreshold)
+        end
     end
 end

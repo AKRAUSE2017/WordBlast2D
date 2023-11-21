@@ -24,6 +24,7 @@ function OrderUtils:handleOrderComplete(customer, currentOrder, dt)
         customer:setSpriteStatus("none")
 
         currentOrder.orderString = ""
+        currentOrder.orderChars = {}
         currentOrder.orderTimer.elapsedTime = -1
         currentOrder.firstTimeFirstLetter = false
 
@@ -41,7 +42,7 @@ function OrderUtils:handleOrderComplete(customer, currentOrder, dt)
 end
 
 function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles, letters, keyProj, keyLet)
-    if currentOrder.orderChars[currentOrder.currentLetterIndex] == letter.value and (currentOrder.trackFulfillment .. letter.value):sub(1, currentOrder.currentLetterIndex+1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex) then
+    if currentOrder.orderChars[currentOrder.currentLetterIndex].value == letter.value and (currentOrder.trackFulfillment .. letter.value):sub(1, currentOrder.currentLetterIndex+1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex) then
         currentOrder.currentLetterIndex = currentOrder.currentLetterIndex + 1 -- move to next letter
         
         currentOrder.orderLetterTimer:resetElapsedTime(dt)
@@ -52,7 +53,7 @@ function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles
     if letter.value == CLEAR_SYMBOL then -- if the player grabbed "!"
         if #currentOrder.trackFulfillment > 0 then
             if currentOrder.trackFulfillment:sub(1, currentOrder.currentLetterIndex) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1) then -- if the letter that will be cleared is a valid part of the order
-                print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1])
+                print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1].value)
                 currentOrder.currentLetterIndex = currentOrder.currentLetterIndex - 1 -- revert the current currentOrder.currentLetterIndex to the previous one
             end
 
@@ -68,7 +69,7 @@ function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles
 end
 
 function OrderUtils:debugMockCollectLetter(letter, currentOrder)
-    isNecessaryLetter = currentOrder.orderChars[currentOrder.currentLetterIndex] == letter.value
+    isNecessaryLetter = currentOrder.orderChars[currentOrder.currentLetterIndex].value == letter.value
 
     -- mock projectile (testing)
     if letter.y > (VIRTUAL_HEIGHT - 20 - LETTER_HEIGHT) and letter.y < (VIRTUAL_HEIGHT - 40 - LETTER_HEIGHT) and isNecessaryLetter then

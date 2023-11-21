@@ -42,7 +42,7 @@ function SpawnUtils:spawnLetterToFulfillOrder(letters, dt)
                     letters = self:spawnLetterLine(letters)
                     currentOrder.willSpawnLetterLine = false
                 elseif currentOrder.currentLetterIndex ~= currentOrder.letterLineSpawnIndex then
-                    local coffeeChar = currentOrder.orderChars[currentOrder.currentLetterIndex]
+                    local coffeeChar = currentOrder.orderChars[currentOrder.currentLetterIndex].value
                 
                     local letter = Letter(coffeeChar, initX, initY, LETTER_WIDTH, LETTER_HEIGHT)
                     letter:setSpeed(currentOrder.orderCharsSpeed[currentOrder.currentLetterIndex])
@@ -100,9 +100,9 @@ function SpawnUtils:spawnLetterLine(letters)
             alphaValue = alphabet[math.random(1, 26)]
         else
             if (frozenCurrentLetterIndex + (countGuranteedLetters - 1)) <= #currentOrder.orderString then
-                alphaValue = currentOrder.orderChars[frozenCurrentLetterIndex + (countGuranteedLetters - 1)]
+                alphaValue = currentOrder.orderChars[frozenCurrentLetterIndex + (countGuranteedLetters - 1)].value
             else
-                alphaValue = currentOrder.orderChars[#currentOrder.orderString]
+                alphaValue = currentOrder.orderChars[#currentOrder.orderString].value
             end
             
             countGuranteedLetters = countGuranteedLetters + 1

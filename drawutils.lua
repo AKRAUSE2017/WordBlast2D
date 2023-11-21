@@ -2,8 +2,16 @@ DrawUtils = Class{}
 
 function DrawUtils:renderOrderStatus(currentOrder)
     -- love.graphics.setColor(0, 255/255, 0, 255/255)
-    love.graphics.print(currentOrder.orderString, 35, 15)
-    love.graphics.print(currentOrder.trackFulfillment, 35, 35) -- concat in lua is '..'
+    for _, floatLetter in pairs(currentOrder.orderChars) do
+        floatLetter:render()
+    end
+
+    local fulFillX = 35
+    for i = 1, #currentOrder.trackFulfillment do
+        local char = string.sub(currentOrder.trackFulfillment, i, i)
+        love.graphics.print(char, fulFillX, 35)
+        fulFillX = fulFillX + 10
+    end
     
     -- print(currentOrder.orderTimer.endTime)
     if currentOrder.orderTimer.elapsedTime > currentOrder.orderTimer.endTime and currentOrder.orderTimer.endTime ~= 0 then

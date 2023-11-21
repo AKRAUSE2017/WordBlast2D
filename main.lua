@@ -189,6 +189,10 @@ function love.update(dt)
         letters = SpawnUtils:spawnLetterToFulfillOrder(letters, dt)
         letters = SpawnUtils:spawnClearLetter(letters, dt)
 
+        -- UPDATE CURRENT ORDER
+        for _, floatLetter in pairs(currentOrder.orderChars) do
+            floatLetter:update(dt)
+        end
         currentOrder:checkAndUpdateSpeedTimer(dt)
 
         -- Handle collisions
@@ -218,7 +222,7 @@ function love.update(dt)
         -- Update falling letters
         for key, letter in pairs(letters) do
             letter:update(dt) -- update position
-            currentOrder:checkAndStartSpeedTimer(letter)
+            currentOrder:checkAndStartSpeedTimer(customer, letter)
             -- currentOrder = OrderUtils:debugMockCollectLetter(letter, currentOrder)
 
             if letter.y > VIRTUAL_HEIGHT then
