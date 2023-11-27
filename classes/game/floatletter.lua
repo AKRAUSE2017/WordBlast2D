@@ -15,10 +15,10 @@ function FloatLetter:render()
 end
 
 function FloatLetter:update(dt)
-    if self.y >= 16 or self.y <= 12 then
-        self.direction = self.direction * -1
-    end
+    -- if self.y >= 16 or self.y <= 12 then
+    --     self.direction = self.direction * -1
+    -- end
 
-    self.dy = self.direction * self.speed
-    self.y = self.y + self.dy * dt
+    -- self.dy = self.direction * self.speed
+    self.y = self.y -- + self.dy * dt
 end

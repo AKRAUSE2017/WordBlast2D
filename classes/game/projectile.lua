@@ -1,6 +1,6 @@
 Projectile = Class{}
 
-PROJECTILE_SPEED = 100
+PROJECTILE_SPEED = 150
 
 function Projectile:init(x, y, w, h, mode, angle)
     self.shoot_sound = love.audio.newSource("assets/sounds/shoot.wav", "static")

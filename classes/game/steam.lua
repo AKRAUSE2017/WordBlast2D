@@ -1,6 +1,6 @@
-require('stack')
-require('timer')
-require('utils')
+require('classes.utils.stack')
+require('classes.game.timer')
+require('classes.utils.utils')
 
 Steam = Class{}
 

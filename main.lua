@@ -1,21 +1,22 @@
-push = require('push')
-Class = require('class')
+push = require('classes.basic.push')
+Class = require('classes.basic.class')
 
-require('player')
-require('projectile')
-require('letter')
-require('customer')
-require('order')
-require('timer')
-require('aimline')
-require('fish')
-require('rain')
-require('coversprite')
-require('steam')
-require('utils')
-require('spawnutils')
-require('orderutils')
-require('drawutils')
+require('classes.game.player')
+require('classes.game.projectile')
+require('classes.game.letter')
+require('classes.game.customer')
+require('classes.game.order')
+require('classes.game.timer')
+require('classes.game.aimline')
+require('classes.game.fish')
+require('classes.game.rain')
+require('classes.game.coversprite')
+require('classes.game.steam')
+
+require('classes.utils.utils')
+require('classes.utils.spawnutils')
+require('classes.utils.orderutils')
+require('classes.utils.drawutils')
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 576
@@ -45,6 +46,8 @@ local letters = {}
 local aimLines = {}
 local coverSprites = {}
 
+local musicVolume = 0.15
+
 math.randomseed(os.time())
 
 function love.resize(w,h)
@@ -65,7 +68,7 @@ function love.load()
 
     -- MUSIC SETUP
     background_music = love.audio.newSource("assets/sounds/WordBlast2D_V1.mp3", "stream")
-    background_music:setVolume(0.15) 
+    background_music:setVolume(musicVolume) 
     background_music:setPitch(1.05)
     
     -- GENERAL VISUALS
@@ -78,6 +81,7 @@ function love.load()
     table.insert(coverSprites, CoverSprite(7, VIRTUAL_HEIGHT-114-9, "assets/covers/plant_leaf.png"))
     table.insert(coverSprites, CoverSprite(0, VIRTUAL_HEIGHT-164, "assets/covers/window_bar.png"))
     table.insert(coverSprites, CoverSprite(167, VIRTUAL_HEIGHT-121, "assets/covers/cup.png"))
+    table.insert(coverSprites, CoverSprite(VIRTUAL_WIDTH-21, 101, "assets/covers/tank.png"))
     
     -- OBJECTS
     fish_blue = Fish(VIRTUAL_WIDTH-50, 105, "assets/animate/fish_blue.png", 7, 1)
@@ -122,17 +126,27 @@ function love.draw()
 
     if game_state == "start" then
         DrawUtils:renderMenu()
-    end    
-
-    if game_state == "play" then    
+    elseif game_state == "start_credits" then
+        DrawUtils:renderCredits()
+    elseif game_state == "start_settings" then
+        DrawUtils:renderSettings(musicVolume)
+    end
+    if game_state == "play" then
+        
         -- RENDER BEHIND COVER SPRITES
         steam:render()
         rain:render()
+        fish_blue:render()
+        fish_red:render()
 
         -- COVER SPRITES
         for _, coverSprite in pairs(coverSprites) do
             coverSprite:render()
         end
+
+        -- RENDER IN FRONT OF COVER SPRITES
+        player:render()
+        customer:render()
 
         for key, projectile in pairs(projectiles) do -- iterate through each projectile
             projectile:render() -- update the position
@@ -149,29 +163,89 @@ function love.draw()
 
         DrawUtils:renderOrderStatus(currentOrder)
 
-        -- RENDER IN FRONT OF COVER SPRITES
-        player:render()
-        customer:render()
-        fish_blue:render()
-        fish_red:render()
-
         -- love.graphics.rectangle("fill", 0, VIRTUAL_HEIGHT - 20, 600, 2) -- TESTING
     end
-    
+
+    -- love.graphics.setColor(255/255, 255/255, 255/255)
+    -- setDims = DrawUtils:getButtonDims("Settings")
+    -- love.graphics.rectangle("fill", setDims[1], setDims[2], setDims[3], setDims[4])
+
     push:finish()
 end
 
-
 function love.mousereleased(x, y, button)
+    local scaleX = VIRTUAL_WIDTH/WINDOW_WIDTH
+    local scaleY = VIRTUAL_HEIGHT/WINDOW_HEIGHT
+    
+    local tempMouseObj = Projectile(x*scaleX, y*scaleY, 1, 1)
+
+    local setDims = DrawUtils:getButtonDims("Settings")
+    local tempSetObj = Projectile(setDims[1], setDims[2], setDims[3], setDims[4])
+    local clickedSettings = Utils:collision(tempMouseObj, tempSetObj)
+    print(clickedSettings)
+    
+    if button == 1 and game_state == "start_credits" then
+        local btnDims = DrawUtils:getButtonDims("<")
+        local tempBtnObj = Projectile(btnDims[1], btnDims[2], btnDims[3], btnDims[4])
+        local clickedBack = Utils:collision(tempMouseObj, tempBtnObj)
+
+        if clickedBack then
+            game_state = "start"
+        end
+    end
+
     if button == 1 and game_state == "start" then
-        game_state = "play"
+        local startDims = DrawUtils:getButtonDims("Start")
+        local tempStartObj = Projectile(startDims[1], startDims[2], startDims[3], startDims[4])
+        local clickedStart = Utils:collision(tempMouseObj, tempStartObj)
+
+        local creditDims = DrawUtils:getButtonDims("Credits")
+        local tempCredObj = Projectile(creditDims[1], creditDims[2], creditDims[3], creditDims[4])
+        local clickedCredits = Utils:collision(tempMouseObj, tempCredObj)
+
+        local setDims = DrawUtils:getButtonDims("Settings")
+        local tempSetObj = Projectile(setDims[1], setDims[2], setDims[3], setDims[4])
+        local clickedSettings = Utils:collision(tempMouseObj, tempSetObj)
+
+        if clickedStart then 
+            game_state = "play"
+        elseif clickedCredits then
+            game_state = "start_credits"
+        elseif clickedSettings then
+            game_state = "start_settings"
+        end
+    end
+
+    if button == 1 and game_state == "start_settings" then
+        btnDims = DrawUtils:getButtonDims("-")
+        tempBtnObj = Projectile(btnDims[1], btnDims[2], btnDims[3], btnDims[4])
+        local clickedDown = Utils:collision(tempMouseObj, tempBtnObj)
+        if clickedDown then
+            musicVolume = musicVolume - 0.01
+            background_music:setVolume(musicVolume)
+        end
+
+        btnDims = DrawUtils:getButtonDims("+")
+        tempBtnObj = Projectile(btnDims[1], btnDims[2], btnDims[3], btnDims[4])
+        local clickedUp = Utils:collision(tempMouseObj, tempBtnObj)
+        if clickedUp then
+            musicVolume = musicVolume + 0.01
+            background_music:setVolume(musicVolume) 
+        end
+
+        btnDims = DrawUtils:getButtonDims("<")
+        tempBtnObj = Projectile(btnDims[1], btnDims[2], btnDims[3], btnDims[4])
+        local clickedBack = Utils:collision(tempMouseObj, tempBtnObj)
+        if clickedBack then
+            game_state = "start"
+        end
     end
  end
 
 function love.update(dt)
-    -- if not background_music:isPlaying() then
-	-- 	love.audio.play(background_music)
-	-- end
+    if not background_music:isPlaying() then
+		love.audio.play(background_music)
+	end
 
     if game_state == "play" then
         -- ANIMATION UPDATES
@@ -207,7 +281,7 @@ function love.update(dt)
 
         -- Handle order completion and next order
         if currentOrder.trackFulfillment == currentOrder.orderString or customer.spriteStatus == "happy" then
-            customer, currentOrder = OrderUtils:handleOrderComplete(customer, currentOrder, dt)
+            customer, currentOrder, player = OrderUtils:handleOrderComplete(customer, currentOrder, player, dt)
         end
 
         -- Update projectiles

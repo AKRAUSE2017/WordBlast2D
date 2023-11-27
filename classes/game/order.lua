@@ -1,6 +1,6 @@
-require('timer')
-require('letter')
-require('floatletter')
+require('classes.game.timer')
+require('classes.game.letter')
+require('classes.game.floatletter')
 
 Order = Class{}
 
@@ -36,13 +36,13 @@ function Order:init(order, dt)
 
     local direction = 1
     local floatX = 35
-    local floatY = 12
+    local floatY = 15
     for i = 1, #self.orderString do
-        floatY = floatY + direction
+        -- floatY = floatY + direction
 
-        if floatY == 16 or floatY == 12 then
-            direction = direction * -1
-        end
+        -- if floatY == 16 or floatY == 12 then
+        --     direction = direction * -1
+        -- end
 
         local char = self.orderString:sub(i, i) -- Extract the character at position 'i'
         local floatLetter = FloatLetter(floatX, floatY, char, direction)

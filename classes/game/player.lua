@@ -1,4 +1,4 @@
-require('projectile')
+require('classes.game.projectile')
 Player = Class{}
 
 DISTANCE_BOTTOM = 5
@@ -12,6 +12,8 @@ function Player:init(w, h)
 
     self.dx = 0
 
+    self.score = 0
+
     self.state = "LR_move"
     self.aimAngle = 90
 
@@ -24,6 +26,10 @@ end
 
 function Player:render()
     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+end
+
+function Player:increaseScore()
+    self.score = self.score + 1
 end
 
 function Player:update(dt)

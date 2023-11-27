@@ -1,6 +1,6 @@
-require('customer')
-require('order')
-require('timer')
+require('classes.game.customer')
+require('classes.game.order')
+require('classes.game.timer')
 
 OrderUtils = Class{}
 
@@ -16,7 +16,7 @@ function OrderUtils:initOrderBufferTimer()
     self.bufferNextOrderTimer = Timer(2)
 end
 
-function OrderUtils:handleOrderComplete(customer, currentOrder, dt)
+function OrderUtils:handleOrderComplete(customer, currentOrder, player, dt)
     currentOrder.trackingOrderTimer = false
     self.bufferNextOrderTimer:updateElapsedTime(dt)
     
@@ -32,17 +32,24 @@ function OrderUtils:handleOrderComplete(customer, currentOrder, dt)
 
         if self.bufferNextOrderTimer.elapsedTime > 3 then
             self.bufferNextOrderTimer:resetElapsedTime()
+            player:increaseScore()
+            print("Points", player.score)
             customer, currentOrder = OrderUtils:selectRandomOrder()
         end
     else
         customer:setSpriteStatus("happy")
     end
 
-    return customer, currentOrder
+    return customer, currentOrder, player
 end
 
-function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles, letters, keyProj, keyLet)
-    if currentOrder.orderChars[currentOrder.currentLetterIndex].value == letter.value and (currentOrder.trackFulfillment .. letter.value):sub(1, currentOrder.currentLetterIndex+1) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex) then
+function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles, letters, keyProj, keyLet, dt)
+    -- print("Letter needed", currentOrder.orderChars[currentOrder.currentLetterIndex].value)
+    -- print("Letter grabbed", letter.value)
+    -- print("New word", currentOrder.trackFulfillment .. letter.value)
+    -- print("Target word", currentOrder.orderString:sub(1, currentOrder.currentLetterIndex))
+    if currentOrder.orderChars[currentOrder.currentLetterIndex].value == letter.value and (currentOrder.trackFulfillment .. letter.value) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex) then
+        -- print("New letter")
         currentOrder.currentLetterIndex = currentOrder.currentLetterIndex + 1 -- move to next letter
         
         currentOrder.orderLetterTimer:resetElapsedTime(dt)
@@ -53,7 +60,7 @@ function OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles
     if letter.value == CLEAR_SYMBOL then -- if the player grabbed "!"
         if #currentOrder.trackFulfillment > 0 then
             if currentOrder.trackFulfillment:sub(1, currentOrder.currentLetterIndex) == currentOrder.orderString:sub(1, currentOrder.currentLetterIndex-1) then -- if the letter that will be cleared is a valid part of the order
-                print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1].value)
+                -- print("reverting to", currentOrder.orderChars[currentOrder.currentLetterIndex-1].value)
                 currentOrder.currentLetterIndex = currentOrder.currentLetterIndex - 1 -- revert the current currentOrder.currentLetterIndex to the previous one
             end
 

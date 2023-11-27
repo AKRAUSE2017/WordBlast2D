@@ -1,4 +1,4 @@
-require('timer')
+require('classes.game.timer')
 SpawnUtils = Class{}
 
 function SpawnUtils:initLetterTimers()
@@ -41,9 +41,9 @@ function SpawnUtils:spawnLetterToFulfillOrder(letters, dt)
                 if currentOrder.willSpawnLetterLine and currentOrder.currentLetterIndex == currentOrder.letterLineSpawnIndex then
                     letters = self:spawnLetterLine(letters)
                     currentOrder.willSpawnLetterLine = false
-                elseif currentOrder.currentLetterIndex ~= currentOrder.letterLineSpawnIndex then
+                else                     
                     local coffeeChar = currentOrder.orderChars[currentOrder.currentLetterIndex].value
-                
+                    -- print("spawning letter to fulfill order", coffeeChar)
                     local letter = Letter(coffeeChar, initX, initY, LETTER_WIDTH, LETTER_HEIGHT)
                     letter:setSpeed(currentOrder.orderCharsSpeed[currentOrder.currentLetterIndex])
                     
