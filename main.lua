@@ -70,6 +70,10 @@ function love.load()
     background_music = love.audio.newSource("assets/sounds/WordBlast2D_V1.mp3", "stream")
     background_music:setVolume(musicVolume) 
     background_music:setPitch(1.05)
+
+    complete_sound = love.audio.newSource("assets/sounds/complete_word.wav", "stream")
+    complete_sound:setPitch(0.7)
+    complete_sound:setVolume(0.6) 
     
     -- GENERAL VISUALS
     smallFont = love.graphics.newFont('assets/fonts/font.ttf', 15)
@@ -106,6 +110,7 @@ function love.keypressed(key)
         love.event.quit()
     elseif key == "k" then
         currentOrder.trackFulfillment = currentOrder.orderString
+        love.audio.play(complete_sound)
     elseif key == "1" then
         player.state = "LR_move"
     elseif key == "2" then
@@ -162,6 +167,7 @@ function love.draw()
         end
 
         DrawUtils:renderOrderStatus(currentOrder)
+        player:renderScore()
 
         -- love.graphics.rectangle("fill", 0, VIRTUAL_HEIGHT - 20, 600, 2) -- TESTING
     end
@@ -273,8 +279,13 @@ function love.update(dt)
         for keyp, projectile in pairs(projectiles) do 
             for keyl, letter in pairs(letters) do 
                 if Utils:collision(projectile, letter) then
-                    love.audio.play(letter.collect_sound)
                     currentOrder, projectiles, letters = OrderUtils:handleOrderCollisionUpdate(currentOrder, letter, projectiles, letters, keyp, keyl)
+                    if currentOrder.trackFulfillment == currentOrder.orderString then 
+                        love.audio.play(complete_sound)
+                        player:increaseScore()
+                    else
+                        love.audio.play(letter.collect_sound)
+                    end
                 end
             end
         end

@@ -18,7 +18,7 @@ function DrawUtils:renderOrderStatus(currentOrder)
         love.graphics.setColor(255/255, 255/255, 0/255)
     end
     if currentOrder.orderTimer.elapsedTime ~= -1 then
-        love.graphics.print(string.format("%.2f", currentOrder.orderTimer.elapsedTime), VIRTUAL_WIDTH - 55, 15)
+        love.graphics.print(string.format("%.2f", currentOrder.orderTimer.elapsedTime), VIRTUAL_WIDTH - 150, 15)
     end
     love.graphics.setColor(255/255, 255/255, 255/255)
 end

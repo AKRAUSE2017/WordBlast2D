@@ -32,8 +32,6 @@ function OrderUtils:handleOrderComplete(customer, currentOrder, player, dt)
 
         if self.bufferNextOrderTimer.elapsedTime > 3 then
             self.bufferNextOrderTimer:resetElapsedTime()
-            player:increaseScore()
-            print("Points", player.score)
             customer, currentOrder = OrderUtils:selectRandomOrder()
         end
     else

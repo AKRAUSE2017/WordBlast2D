@@ -28,6 +28,10 @@ function Player:render()
     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
 end
 
+function Player:renderScore()
+    love.graphics.print("Score: "..self.score, VIRTUAL_WIDTH - 90, 15)
+end
+
 function Player:increaseScore()
     self.score = self.score + 1
 end
